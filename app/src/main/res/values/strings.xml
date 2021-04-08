@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Phoenix notes</string>
+    <string name="notes">NOTES</string>
+    <string name="create_note_icon">Create note icon</string>
+    <string name="menu_btn">Menu button</string>
+    <string name="search_your_notes">Search your notes</string>
+    <string name="back_btn">Back button</string>
+    <string name="reminder_btn">Reminder button</string>
+    <string name="pin_btn">Pin button</string>
+    <string name="add_options_button">Add options button</string>
+    <string name="save_btn">Save button</string>
+    <string name="take_photo">Take Photo</string>
+    <string name="recording_icon">Recording icon</string>
+    <string name="take_photo_icon">Take photo icon</string>
+    <string name="add_image_icon">Add image icon</string>
+    <string name="recording">Recording</string>
+    <string name="add_image">Add image</string>
+    <string name="take_a_photo">Take a photo</string>
+    <string name="delete">Delete</string>
+    <string name="delete_icon">Delete icon</string>
+    <string name="color_check_icon">Color check icon</string>
+</resources>
