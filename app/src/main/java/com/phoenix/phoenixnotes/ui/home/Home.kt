@@ -1,5 +1,9 @@
 package com.phoenix.phoenixnotes.ui.home
 
+import android.app.Activity
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -32,8 +36,11 @@ import com.phoenix.phoenixnotes.data.model.Note
 import com.phoenix.phoenixnotes.ui.theme.Black300
 import com.phoenix.phoenixnotes.ui.theme.Black400
 import com.phoenix.phoenixnotes.ui.theme.White200
+import com.phoenix.phoenixnotes.utils.ColorUtil
+import com.phoenix.phoenixnotes.utils.SpeechUtil
 import com.phoenix.phoenixnotes.utils.views.StaggeredVerticalGrid
 import org.joda.time.format.ISODateTimeFormat
+
 
 @ExperimentalUnsignedTypes
 @ExperimentalFoundationApi
@@ -44,6 +51,29 @@ fun Home(navController: NavController) {
 
     val notesState by viewModel.homeState.collectAsState()
 
+    val speechIntentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (it.resultCode == Activity.RESULT_OK) {
+            val result = it.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+
+            if (!result.isNullOrEmpty()) {
+                val content = result[0]
+                val newNote =
+                    Note(
+                        id = "",
+                        title = "",
+                        content,
+                        dateCreated = "",
+                        ColorUtil.noteColors()[0].color.value.toLong()
+                    )
+                newNote.isFromSpeech = true
+
+                openCreateNotePage(navController, newNote)
+            }
+        }
+    }
+
     Scaffold(
         Modifier.fillMaxSize(),
         backgroundColor = Black300,
@@ -51,16 +81,14 @@ fun Home(navController: NavController) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 HomeTopBar()
                 HomeContent(notes = notesState.notes) {
-                    navController.currentBackStackEntry?.arguments?.putSerializable("note", it)
-                    navController.navigate("createNote")
+                    openCreateNotePage(navController, it)
                 }
             }
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    navController.currentBackStackEntry?.arguments?.putSerializable("note", null)
-                    navController.navigate("createNote")
+                    openCreateNotePage(navController, null)
                 },
                 shape = CircleShape,
                 backgroundColor = Black400,
@@ -74,7 +102,11 @@ fun Home(navController: NavController) {
         },
         isFloatingActionButtonDocked = true,
         floatingActionButtonPosition = FabPosition.End,
-        bottomBar = { HomeBottomBar() })
+        bottomBar = {
+            HomeBottomBar(onRecordingClicked = {
+                SpeechUtil.getSpeechIntent(speechIntentLauncher)
+            })
+        })
 }
 
 @Composable
@@ -140,13 +172,13 @@ fun HomeTopBar() {
 }
 
 @Composable
-fun HomeBottomBar() {
+fun HomeBottomBar(onRecordingClicked: () -> Unit) {
     BottomAppBar(
         cutoutShape = CircleShape,
         backgroundColor = Black400
     ) {
         Spacer(modifier = Modifier.width(5.dp))
-        IconButton(onClick = {}, modifier = Modifier.padding(4.dp)) {
+        IconButton(onClick = onRecordingClicked, modifier = Modifier.padding(4.dp)) {
             Icon(imageVector = Icons.Default.Mic, contentDescription = "Microphone icon")
         }
         Spacer(
@@ -258,7 +290,7 @@ fun HomeTopBarPreview() {
 @Composable
 @Preview(showBackground = true)
 fun HomeBottomBarPreview() {
-    HomeBottomBar()
+    //HomeBottomBar()
 }
 
 @ExperimentalUnsignedTypes
@@ -267,4 +299,9 @@ fun HomeBottomBarPreview() {
 @Preview(showBackground = true)
 fun HomeContentPreview() {
     // HomeContent(listOf())
+}
+
+fun openCreateNotePage(navController: NavController, note: Note?) {
+    navController.currentBackStackEntry?.arguments?.putSerializable("note", note)
+    navController.navigate("createNote")
 }

@@ -3,6 +3,7 @@ package com.phoenix.phoenixnotes.ui
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material.MaterialTheme
@@ -24,6 +25,7 @@ class MainActivity : ComponentActivity() {
     @ExperimentalUnsignedTypes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             PhoenixnotesTheme {
                 Surface(color = MaterialTheme.colors.background) {
