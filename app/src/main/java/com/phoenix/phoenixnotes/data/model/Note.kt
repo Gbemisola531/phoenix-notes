@@ -2,6 +2,7 @@ package com.phoenix.phoenixnotes.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.io.Serializable
 
 @Entity
 data class Note(
@@ -11,4 +12,4 @@ data class Note(
     var content: String,
     var dateCreated: String,
     var color: Long
-)
+) : Serializable

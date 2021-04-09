@@ -8,4 +8,8 @@ interface DataRepositorySource {
     suspend fun getAllNotes(): Flow<List<Note>>
 
     suspend fun saveNote(note: Note)
+
+    suspend fun updateNote(note: Note)
+
+    suspend fun deleteNote(note: Note)
 }

@@ -20,9 +20,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,25 +34,55 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.hilt.navigation.compose.hiltNavGraphViewModel
 import androidx.navigation.NavController
 import com.phoenix.phoenixnotes.R
+import com.phoenix.phoenixnotes.data.model.Note
 import com.phoenix.phoenixnotes.data.model.NoteColor
-import com.phoenix.phoenixnotes.ui.theme.Black300
 import com.phoenix.phoenixnotes.ui.theme.RichBlack
 
 @ExperimentalUnsignedTypes
 @ExperimentalAnimationApi
 @Composable
-fun CreateNote(navController: NavController) {
+fun CreateNote(navController: NavController, note: Note?) {
     val createNoteViewModel = hiltNavGraphViewModel<CreateNoteViewModel>()
 
     val stateViewModel = hiltNavGraphViewModel<CreateNoteStateViewModel>()
+
     val viewState by stateViewModel.createNoteState.collectAsState()
-    val selectedColorState by stateViewModel.selectedColorState.collectAsState()
+    val selectedColorState by stateViewModel.colorState.collectAsState()
+    val noteState by stateViewModel.noteState.collectAsState()
 
     val context = LocalContext.current
 
+    note?.let {
+        var shouldUpdateColor by remember { mutableStateOf(true) }
+
+        stateViewModel.onIdValueChange(it.id)
+        stateViewModel.onTitleValueChange(it.title)
+        stateViewModel.onContentValueChange(it.content)
+
+        if (shouldUpdateColor) {
+            stateViewModel.updateSelectedColor(NoteColor(Color(it.color.toULong())))
+            shouldUpdateColor = false
+        }
+    }
+
+    val selectedColor = selectedColorState.selectedColor.color
+
+    val onSaveClicked = {
+        when {
+            noteState.isNoteValid -> {
+                if (note == null)
+                    createNoteViewModel.saveNote(stateViewModel.getNote())
+                else createNoteViewModel.updateNote(stateViewModel.getNote())
+
+                navController.popBackStack()
+            }
+            else -> Toast.makeText(context, "Your note is empty", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Surface(
         modifier = Modifier
-            .background(selectedColorState.color)
+            .background(selectedColor)
             .fillMaxSize()
     ) {
         Column(
@@ -66,26 +94,21 @@ fun CreateNote(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(30.dp)
-                    .background(selectedColorState.color)
+                    .background(selectedColor)
             )
 
             CreateNoteTopBar({
                 navController.popBackStack()
-            }, {}, {}, {
-                if (viewState.isNoteValid) {
-                    createNoteViewModel.saveNote(stateViewModel.getNote())
-                    navController.popBackStack()
-                } else Toast.makeText(context, "Your note is empty", Toast.LENGTH_SHORT).show()
-            }, selectedColorState)
+            }, {}, {}, { onSaveClicked() }, selectedColorState.selectedColor)
 
             TextField(
-                value = viewState.title,
+                value = noteState.title,
                 onValueChange = stateViewModel::onTitleValueChange,
                 colors = TextFieldDefaults.textFieldColors(
                     focusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
-                    backgroundColor = selectedColorState.color
+                    backgroundColor = selectedColor
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -95,32 +118,38 @@ fun CreateNote(navController: NavController) {
             )
 
             TextField(
-                value = viewState.content,
+                value = noteState.content,
                 onValueChange = stateViewModel::onContentValueChange,
                 colors = TextFieldDefaults.textFieldColors(
                     focusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
-                    backgroundColor = selectedColorState.color
+                    backgroundColor = selectedColor
                 ),
                 modifier = Modifier
                     .weight(0.8f)
                     .fillMaxWidth(),
                 placeholder = { Text(text = "Note", fontSize = 14.sp) })
 
-            AddOptionContent(viewState.addOption, selectedColorState)
+            AddOptionContent(viewState.addOption, selectedColorState.selectedColor)
 
             NoteActions(
-                viewState.showActions,
-                viewState.noteColors,
-                selectedColorState,
-                stateViewModel::updateSelectedColor
+                showActions = viewState.showActions,
+                noteColors = selectedColorState.noteColors,
+                selectedColor = selectedColorState.selectedColor,
+                onColorClicked = stateViewModel::updateSelectedColor,
+                onDeleteClicked = {
+                    note?.let {
+                        createNoteViewModel.deleteNote(it)
+                    }
+                    navController.popBackStack()
+                }
             )
 
             CreateNoteBottomBar(
                 stateViewModel::onAddClicked,
                 stateViewModel::onOptionsClicked,
-                selectedColorState
+                selectedColorState.selectedColor
             )
         }
     }
@@ -206,16 +235,15 @@ fun AddOptionContent(addOption: Boolean, selectedColor: NoteColor) {
         enter = slideInVertically(
             initialOffsetY = { 500 },
             animationSpec = tween(
-                delayMillis = 100,
-                durationMillis = 800,
+                delayMillis = 200,
+                durationMillis = 700,
                 easing = LinearOutSlowInEasing
             )
         ),
         exit = slideOutVertically(
             targetOffsetY = { 500 },
             animationSpec = tween(
-                durationMillis = 800,
-                delayMillis = 100,
+                durationMillis = 200,
                 easing = LinearOutSlowInEasing
             )
         )
@@ -315,7 +343,8 @@ fun NoteActions(
     showActions: Boolean,
     noteColors: List<NoteColor>,
     selectedColor: NoteColor,
-    onColorClicked: (NoteColor) -> Unit
+    onColorClicked: (NoteColor) -> Unit,
+    onDeleteClicked: () -> Unit,
 ) {
     AnimatedVisibility(
         modifier = Modifier.background(selectedColor.color),
@@ -323,16 +352,15 @@ fun NoteActions(
         enter = slideInVertically(
             initialOffsetY = { 500 },
             animationSpec = tween(
-                delayMillis = 100,
-                durationMillis = 800,
+                delayMillis = 200,
+                durationMillis = 700,
                 easing = LinearOutSlowInEasing
             )
         ),
         exit = slideOutVertically(
             targetOffsetY = { 500 },
             animationSpec = tween(
-                durationMillis = 800,
-                delayMillis = 100,
+                durationMillis = 200,
                 easing = LinearOutSlowInEasing
             )
         )
@@ -358,7 +386,7 @@ fun NoteActions(
                     ) {
                         item {
                             AddOption(
-                                onOptionClick = {},
+                                onOptionClick = onDeleteClicked,
                                 icon = Icons.Outlined.Delete,
                                 contentDescription = stringResource(R.string.delete_icon),
                                 stringResource(R.string.delete), selectedColor
@@ -369,7 +397,7 @@ fun NoteActions(
                             Spacer(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(8.dp)
+                                    .height(13.dp)
                             )
                         }
                     }
@@ -403,19 +431,19 @@ fun ColorAction(
     Box(
         Modifier
             .padding(start = 10.dp)
-            .size(50.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .background(noteColor.color)
             .border(
                 0.5.dp,
-                if (noteColor.id == selectedColor.id) RichBlack else noteColor.color,
+                if (noteColor == selectedColor) RichBlack else noteColor.color,
                 CircleShape
             )
             .clickable(onClick = {
                 onColorClicked(noteColor)
             })
     ) {
-        if (noteColor.id == selectedColor.id) {
+        if (noteColor == selectedColor) {
             Icon(
                 modifier = Modifier.align(Alignment.Center),
                 imageVector = Icons.Default.Check,

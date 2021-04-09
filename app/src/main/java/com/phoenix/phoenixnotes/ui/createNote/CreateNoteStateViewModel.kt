@@ -23,29 +23,48 @@ class CreateNoteStateViewModel @Inject constructor() : ViewModel() {
     private val _createNoteState = MutableStateFlow(CreateNoteState())
     val createNoteState: StateFlow<CreateNoteState> get() = _createNoteState
 
+    private val _noteState = MutableStateFlow(NoteState())
+    val noteState: StateFlow<NoteState> get() = _noteState
+
+    private val _colorState = MutableStateFlow(ColorState())
+    val colorState: StateFlow<ColorState> get() = _colorState
+
+    private val _idState = MutableStateFlow(UUID.randomUUID().toString())
     private val _titleState = MutableStateFlow("")
     private val _contentState = MutableStateFlow("")
+
     private val _addOptionState = MutableStateFlow(false)
-    private val _showActions = MutableStateFlow(false)
-    private val _noteColorsState = MutableStateFlow(ColorUtil.noteColors())
-    private val _selectedColorState = MutableStateFlow(_noteColorsState.value[0])
-    val selectedColorState get() = _selectedColorState
+    private val _showActionsState = MutableStateFlow(false)
+
+    private val _selectedColorState = MutableStateFlow(_colorState.value.selectedColor)
 
     init {
         viewModelScope.launch {
-            combine(
-                _titleState, _contentState,
-                _addOptionState, _noteColorsState,
-                _showActions
-            ) { title, content, addOption, noteColors, showActions ->
-                val isNoteValid = title.isNotEmpty() || content.isNotEmpty()
-                CreateNoteState(title, content, isNoteValid, addOption, showActions, noteColors)
+            combine(_addOptionState, _showActionsState) { addOption, showAction ->
+                CreateNoteState(addOption, showAction)
             }.collect {
                 _createNoteState.value = it
             }
-
-            _selectedColorState.collect { _selectedColorState.value = it }
         }
+
+        viewModelScope.launch {
+            _selectedColorState.collect {
+                _colorState.value = ColorState(it)
+            }
+        }
+
+        viewModelScope.launch {
+            combine(_idState, _titleState, _contentState) { id, title, content ->
+                val isNoteValid = title.isNotEmpty() || content.isNotEmpty()
+                NoteState(id, title, content, isNoteValid)
+            }.collect {
+                _noteState.value = it
+            }
+        }
+    }
+
+    fun onIdValueChange(newId: String) {
+        _idState.value = newId
     }
 
     fun onTitleValueChange(newValue: String) {
@@ -57,11 +76,17 @@ class CreateNoteStateViewModel @Inject constructor() : ViewModel() {
     }
 
     fun onAddClicked() {
+        if (_showActionsState.value)
+            _showActionsState.value = false
+
         _addOptionState.value = _addOptionState.value.not()
     }
 
     fun onOptionsClicked() {
-        _showActions.value = _showActions.value.not()
+        if (_addOptionState.value)
+            _addOptionState.value = false
+
+        _showActionsState.value = _showActionsState.value.not()
     }
 
     fun updateSelectedColor(selectedColor: NoteColor) {
@@ -69,25 +94,34 @@ class CreateNoteStateViewModel @Inject constructor() : ViewModel() {
     }
 
     fun getNote(): Note {
-        val createNoteState = _createNoteState.value
+        val noteState = _noteState.value
 
         val format = ISODateTimeFormat.dateTime()
         val date = format.parseDateTime(DateTime.now().toString())
 
         return Note(
-            UUID.randomUUID().toString(),
-            createNoteState.title,
-            createNoteState.content, date.toString(),
+            _idState.value,
+            noteState.title,
+            noteState.content, date.toString(),
             _selectedColorState.value.color.value.toLong()
         )
     }
 }
 
 data class CreateNoteState @ExperimentalUnsignedTypes constructor(
-    val title: String = "",
-    val content: String = "",
-    val isNoteValid: Boolean = false,
     val addOption: Boolean = false,
     val showActions: Boolean = false,
-    val noteColors: List<NoteColor> = listOf()
+)
+
+data class NoteState(
+    val id: String = "",
+    val title: String = "",
+    val content: String = "",
+    val isNoteValid: Boolean = false
+)
+
+@ExperimentalUnsignedTypes
+data class ColorState(
+    val selectedColor: NoteColor = ColorUtil.noteColors()[0],
+    val noteColors: List<NoteColor> = ColorUtil.noteColors()
 )

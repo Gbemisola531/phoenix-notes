@@ -10,6 +10,7 @@ import androidx.compose.material.Surface
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.phoenix.phoenixnotes.data.model.Note
 import com.phoenix.phoenixnotes.ui.createNote.CreateNote
 import com.phoenix.phoenixnotes.ui.home.Home
 import com.phoenix.phoenixnotes.ui.theme.PhoenixnotesTheme
@@ -20,6 +21,7 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @ExperimentalUnsignedTypes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -30,11 +32,14 @@ class MainActivity : ComponentActivity() {
                     NavHost(navController = navController, startDestination = "home") {
                         composable("home") { Home(navController) }
                         composable("createNote") {
-                            CreateNote(navController)
+                            val note =
+                                navController.previousBackStackEntry?.arguments?.getSerializable("note") as Note?
+                            CreateNote(navController, note)
                         }
                     }
                 }
             }
         }
+
     }
 }

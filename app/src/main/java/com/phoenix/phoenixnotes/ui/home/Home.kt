@@ -8,8 +8,8 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,6 +33,7 @@ import com.phoenix.phoenixnotes.ui.theme.Black300
 import com.phoenix.phoenixnotes.ui.theme.Black400
 import com.phoenix.phoenixnotes.ui.theme.White200
 import com.phoenix.phoenixnotes.utils.views.StaggeredVerticalGrid
+import org.joda.time.format.ISODateTimeFormat
 
 @ExperimentalUnsignedTypes
 @ExperimentalFoundationApi
@@ -49,12 +50,16 @@ fun Home(navController: NavController) {
         content = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 HomeTopBar()
-                HomeContent(notes = notesState.notes)
+                HomeContent(notes = notesState.notes) {
+                    navController.currentBackStackEntry?.arguments?.putSerializable("note", it)
+                    navController.navigate("createNote")
+                }
             }
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
+                    navController.currentBackStackEntry?.arguments?.putSerializable("note", null)
                     navController.navigate("createNote")
                 },
                 shape = CircleShape,
@@ -96,8 +101,8 @@ fun HomeTopBar() {
             val (menuIcon, searchTxt, userIcon) = createRefs()
 
             Icon(
-                imageVector = Icons.Default.Menu,
-                contentDescription = stringResource(R.string.menu_btn),
+                imageVector = Icons.Default.Search,
+                contentDescription = stringResource(R.string.search_btn),
                 modifier = Modifier.constrainAs(menuIcon) {
                     top.linkTo(parent.top)
                     start.linkTo(parent.start, margin = 5.dp)
@@ -112,7 +117,7 @@ fun HomeTopBar() {
                     .constrainAs(searchTxt) {
                         top.linkTo(parent.top)
                         bottom.linkTo(parent.bottom)
-                        start.linkTo(menuIcon.end, margin = 10.dp)
+                        start.linkTo(menuIcon.end, margin = 5.dp)
                     }
             )
 
@@ -159,7 +164,7 @@ fun HomeBottomBar() {
 @ExperimentalUnsignedTypes
 @ExperimentalFoundationApi
 @Composable
-fun HomeContent(notes: List<Note>) {
+fun HomeContent(notes: List<Note>, onNoteClicked: (Note) -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
@@ -179,8 +184,13 @@ fun HomeContent(notes: List<Note>) {
             maxColumnWidth = 220.dp,
             modifier = Modifier.padding(start = 2.dp, end = 5.dp)
         ) {
-            notes.forEach {
-                NoteItem(it)
+            notes.sortedWith { note1, note2 ->
+                val firstDate = ISODateTimeFormat.dateTime().parseDateTime(note1.dateCreated)
+                val secondDate = ISODateTimeFormat.dateTime().parseDateTime(note2.dateCreated)
+
+                secondDate.compareTo(firstDate)
+            }.forEach {
+                NoteItem(it, onNoteClicked)
             }
         }
 
@@ -194,7 +204,7 @@ fun HomeContent(notes: List<Note>) {
 
 @ExperimentalUnsignedTypes
 @Composable
-fun NoteItem(note: Note) {
+fun NoteItem(note: Note, onNoteClicked: (Note) -> Unit) {
     Card(
         shape = RoundedCornerShape(7.dp),
         border = BorderStroke(0.5.dp, White200), modifier = Modifier
@@ -203,6 +213,7 @@ fun NoteItem(note: Note) {
             .background(Color(note.color))
             .padding(5.dp)
             .clickable {
+                onNoteClicked(note)
             },
         backgroundColor = Color(note.color.toULong())
     ) {
@@ -255,5 +266,5 @@ fun HomeBottomBarPreview() {
 @Composable
 @Preview(showBackground = true)
 fun HomeContentPreview() {
-    HomeContent(listOf())
+    // HomeContent(listOf())
 }

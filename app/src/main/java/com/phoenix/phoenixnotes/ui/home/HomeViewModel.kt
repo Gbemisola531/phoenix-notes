@@ -35,7 +35,7 @@ class HomeViewModel @Inject constructor(
     fun getAllNotes() {
         viewModelScope.launch {
             dataRepository.getAllNotes().collect {
-                _getAllNotes.value = it.reversed()
+                _getAllNotes.value = it
             }
         }
     }
