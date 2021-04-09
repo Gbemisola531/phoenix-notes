@@ -1,6 +1,12 @@
 package com.phoenix.phoenixnotes.ui.createNote
 
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -37,6 +43,7 @@ import com.phoenix.phoenixnotes.R
 import com.phoenix.phoenixnotes.data.model.Note
 import com.phoenix.phoenixnotes.data.model.NoteColor
 import com.phoenix.phoenixnotes.ui.theme.RichBlack
+import com.phoenix.phoenixnotes.utils.SpeechUtil
 
 @ExperimentalUnsignedTypes
 @ExperimentalAnimationApi
@@ -52,16 +59,30 @@ fun CreateNote(navController: NavController, note: Note?) {
 
     val context = LocalContext.current
 
+    val speechIntentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (it.resultCode == Activity.RESULT_OK) {
+            val result = it.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+
+            if (!result.isNullOrEmpty()) {
+                val newNoteContent = "${noteState.content}\n${result[0]}"
+                stateViewModel.onContentValueChange(newNoteContent)
+            }
+        }
+    }
+
     note?.let {
-        var shouldUpdateColor by remember { mutableStateOf(true) }
+        var shouldUpdate by remember { mutableStateOf(true) }
 
-        stateViewModel.onIdValueChange(it.id)
-        stateViewModel.onTitleValueChange(it.title)
-        stateViewModel.onContentValueChange(it.content)
+        if (shouldUpdate) {
+            if (!it.isFromSpeech)
+                stateViewModel.onIdValueChange(it.id)
+            stateViewModel.onTitleValueChange(it.title)
+            stateViewModel.onContentValueChange(it.content)
 
-        if (shouldUpdateColor) {
             stateViewModel.updateSelectedColor(NoteColor(Color(it.color.toULong())))
-            shouldUpdateColor = false
+            shouldUpdate = false
         }
     }
 
@@ -70,15 +91,51 @@ fun CreateNote(navController: NavController, note: Note?) {
     val onSaveClicked = {
         when {
             noteState.isNoteValid -> {
-                if (note == null)
-                    createNoteViewModel.saveNote(stateViewModel.getNote())
-                else createNoteViewModel.updateNote(stateViewModel.getNote())
+                val noteToSave = stateViewModel.getNote()
 
+                when (note) {
+                    null -> createNoteViewModel.saveNote(noteToSave)
+                    else -> {
+                        if (note.isFromSpeech) createNoteViewModel.saveNote(noteToSave)
+                        else
+                            createNoteViewModel.updateNote(noteToSave)
+                    }
+                }
                 navController.popBackStack()
             }
             else -> Toast.makeText(context, "Your note is empty", Toast.LENGTH_SHORT).show()
         }
     }
+
+    CreateNoteContent(
+        navController,
+        stateViewModel,
+        createNoteViewModel,
+        noteState,
+        selectedColorState,
+        viewState,
+        note,
+        selectedColor,
+        { onSaveClicked() },
+        speechIntentLauncher
+    )
+}
+
+@ExperimentalAnimationApi
+@ExperimentalUnsignedTypes
+@Composable
+fun CreateNoteContent(
+    navController: NavController,
+    stateViewModel: CreateNoteStateViewModel,
+    createNoteViewModel: CreateNoteViewModel,
+    noteState: NoteState,
+    selectedColorState: ColorState,
+    viewState: CreateNoteState,
+    note: Note?,
+    selectedColor: Color,
+    onSaveClicked: () -> Unit,
+    speechIntentLauncher: ActivityResultLauncher<Intent>
+) {
 
     Surface(
         modifier = Modifier
@@ -131,7 +188,13 @@ fun CreateNote(navController: NavController, note: Note?) {
                     .fillMaxWidth(),
                 placeholder = { Text(text = "Note", fontSize = 14.sp) })
 
-            AddOptionContent(viewState.addOption, selectedColorState.selectedColor)
+            AddOptionContent(
+                addOption = viewState.addOption,
+                selectedColor = selectedColorState.selectedColor,
+                onRecordingClicked = {
+                    stateViewModel.onAddClicked()
+                    SpeechUtil.getSpeechIntent(speechIntentLauncher)
+                })
 
             NoteActions(
                 showActions = viewState.showActions,
@@ -228,7 +291,10 @@ fun CreateNoteTopBar(
 
 @ExperimentalAnimationApi
 @Composable
-fun AddOptionContent(addOption: Boolean, selectedColor: NoteColor) {
+fun AddOptionContent(
+    addOption: Boolean, selectedColor: NoteColor,
+    onRecordingClicked: () -> Unit
+) {
     AnimatedVisibility(
         modifier = Modifier.background(selectedColor.color),
         visible = addOption,
@@ -285,7 +351,7 @@ fun AddOptionContent(addOption: Boolean, selectedColor: NoteColor) {
 
                     item {
                         AddOption(
-                            onOptionClick = {},
+                            onOptionClick = onRecordingClicked,
                             icon = Icons.Outlined.Mic,
                             contentDescription = stringResource(R.string.recording_icon),
                             stringResource(R.string.recording), selectedColor
