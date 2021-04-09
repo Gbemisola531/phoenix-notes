@@ -13,10 +13,21 @@ class CreateNoteViewModel @Inject constructor(
     private val dataRepositorySource: DataRepositorySource
 ) : ViewModel() {
 
-
     fun saveNote(note: Note) {
         viewModelScope.launch {
             dataRepositorySource.saveNote(note)
+        }
+    }
+
+    fun updateNote(note: Note) {
+        viewModelScope.launch {
+            dataRepositorySource.updateNote(note)
+        }
+    }
+
+    fun deleteNote(note: Note) {
+        viewModelScope.launch {
+            dataRepositorySource.deleteNote(note)
         }
     }
 }

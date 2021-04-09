@@ -19,4 +19,5 @@
     <string name="delete">Delete</string>
     <string name="delete_icon">Delete icon</string>
     <string name="color_check_icon">Color check icon</string>
+    <string name="search_btn">Search button</string>
 </resources>

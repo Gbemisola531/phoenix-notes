@@ -11,5 +11,9 @@ class LocalData @Inject constructor(
 
     override suspend fun saveNote(note: Note) = noteDao.saveNote(note)
 
+    override suspend fun updateNote(note: Note) = noteDao.updateNote(note)
+
+    override suspend fun deleteNote(note: Note) = noteDao.deleteNote(note)
+
     override suspend fun getAllNotes(): Flow<List<Note>> = noteDao.getAllNotes()
 }

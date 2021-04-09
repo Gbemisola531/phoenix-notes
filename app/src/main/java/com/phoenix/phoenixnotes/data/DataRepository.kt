@@ -16,4 +16,12 @@ class DataRepository @Inject constructor(
     override suspend fun saveNote(note: Note) {
         localDataSource.saveNote(note)
     }
+
+    override suspend fun updateNote(note: Note) {
+        localDataSource.updateNote(note)
+    }
+
+    override suspend fun deleteNote(note: Note) {
+        localDataSource.deleteNote(note)
+    }
 }
