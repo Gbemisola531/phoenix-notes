@@ -80,7 +80,7 @@ dependencies {
     implementation 'androidx.hilt:hilt-navigation-compose:1.0.0-alpha01'
 
     //navigation
-    implementation "androidx.navigation:navigation-compose:1.0.0-alpha09"
+    implementation "androidx.navigation:navigation-compose:1.0.0-alpha10"
 
     //Joda
     implementation 'net.danlew:android.joda:2.10.9.1'
